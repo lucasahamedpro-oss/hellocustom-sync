@@ -76,7 +76,9 @@ function collectPhotoUrls(props) {
     const val = getField(props, `Upload photo(s)-${i}`);
     if (val) urls.push(val);
   }
-  return urls.join("\n");
+  if (urls.length === 0) return "";
+  if (urls.length === 1) return urls[0];
+  return urls.map((u, i) => `📷 Photo ${i + 1} :\n${u}`).join("\n\n");
 }
 
 function getField(props, name) {
