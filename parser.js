@@ -13,7 +13,7 @@ function parseOrder(order) {
   const productType   = detectProductType(order.line_items || []);
   const category      = detectCategory(order.tags || "");
 
-  const photoUrl        = getField(allProperties, "Upload photo(s)-1");
+  const photoUrl        = collectPhotoUrls(allProperties);
   const size            = getField(allProperties, "Taille");
   const placement       = getField(allProperties, "Placement de la broderie");
   const nbPortraits     = getField(allProperties, "Nombre de portraits");
@@ -58,13 +58,25 @@ function collectProperties(lineItems) {
     for (const prop of item.properties || []) {
       const key = (prop.name || "").trim();
       const val = (prop.value || "").trim();
-      // Ignorer les valeurs vides ou les placeholders Globo ("_", "--")
       if (key && val && val !== "_" && val !== "--") {
         if (!map[key]) map[key] = val;
       }
     }
   }
   return map;
+}
+
+/**
+ * Collecte toutes les photos Globo (Upload photo(s)-1, -2, -3...)
+ * et les retourne séparées par saut de ligne pour affichage multi-lignes dans Sheets.
+ */
+function collectPhotoUrls(props) {
+  const urls = [];
+  for (let i = 1; i <= 10; i++) {
+    const val = getField(props, `Upload photo(s)-${i}`);
+    if (val) urls.push(val);
+  }
+  return urls.join("\n");
 }
 
 function getField(props, name) {
