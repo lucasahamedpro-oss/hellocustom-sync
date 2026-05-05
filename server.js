@@ -35,10 +35,9 @@ app.post("/webhook/orders/create", async (req, res) => {
   const order = req.body;
   log.info(`Received order #${order.order_number} (id: ${order.id})`);
 
-  // Filtre : uniquement les commandes portrait-animal
-  const tags = (order.tags || "").toLowerCase();
-  if (!tags.includes("portrait-animal")) {
-    log.info(`⏭ Order #${order.order_number} ignorée (tag portrait-animal absent, tags: "${order.tags}")`);
+  // Filtre : uniquement les commandes pull portrait animal
+  if (!isPortraitAnimalOrder(order)) {
+    log.info(`⏭ Order #${order.order_number} ignorée (tags: "${order.tags}")`);
     return;
   }
 
@@ -52,6 +51,24 @@ app.post("/webhook/orders/create", async (req, res) => {
     log.error(`✗ Failed to process order #${order.order_number}:`, err.message);
   }
 });
+
+// ── Filtre commandes portrait animal ─────────────────────────────────────────
+function isPortraitAnimalOrder(order) {
+  const tags = (order.tags || "").toLowerCase();
+
+  // Vérifie les tags Shopify (toutes variantes possibles)
+  const hasTag = tags.includes("portrait animal pull") ||
+                 tags.includes("portrait-animal");
+
+  // Fallback : si la commande contient une photo uploadée via Globo
+  const hasPhoto = (order.line_items || []).some(item =>
+    (item.properties || []).some(p =>
+      (p.name || "").trim() === "Upload photo(s)-1" && (p.value || "").trim()
+    )
+  );
+
+  return hasTag || hasPhoto;
+}
 
 // ── HMAC verification ─────────────────────────────────────────────────────────
 function verifyShopifyHmac(req) {
