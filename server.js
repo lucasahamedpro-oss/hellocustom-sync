@@ -35,6 +35,13 @@ app.post("/webhook/orders/create", async (req, res) => {
   const order = req.body;
   log.info(`Received order #${order.order_number} (id: ${order.id})`);
 
+  // Filtre : uniquement les commandes portrait-animal
+  const tags = (order.tags || "").toLowerCase();
+  if (!tags.includes("portrait-animal")) {
+    log.info(`⏭ Order #${order.order_number} ignorée (tag portrait-animal absent, tags: "${order.tags}")`);
+    return;
+  }
+
   try {
     const row = parseOrder(order);
     log.info(`Parsed row for order #${order.order_number}:`, row);
