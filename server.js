@@ -56,18 +56,30 @@ app.post("/webhook/orders/create", async (req, res) => {
 function isPortraitAnimalOrder(order) {
   const tags = (order.tags || "").toLowerCase();
 
-  // Vérifie les tags Shopify (toutes variantes possibles)
+  // 1. Vérifie les tags Shopify
   const hasTag = tags.includes("portrait animal pull") ||
                  tags.includes("portrait-animal");
 
-  // Fallback : si la commande contient une photo uploadée via Globo
+  // 2. Vérifie le titre ou SKU du produit (plus fiable que les tags)
+  const hasProductMatch = (order.line_items || []).some(item => {
+    const title = (item.title || "").toLowerCase();
+    const sku   = (item.sku   || "").toLowerCase();
+    return title.includes("brodé animal") ||
+           title.includes("brode animal") ||
+           sku.includes("hc-sweat-cat")   ||
+           sku.includes("hc-sweat-ani");
+  });
+
+  // 3. Fallback : présence d'une photo uploadée via Globo
   const hasPhoto = (order.line_items || []).some(item =>
-    (item.properties || []).some(p =>
-      (p.name || "").trim() === "Upload photo(s)-1" && (p.value || "").trim()
-    )
+    (item.properties || []).some(p => {
+      const name = (p.name || "").trim().toLowerCase();
+      const val  = (p.value || "").trim();
+      return name.startsWith("upload photo") && val.length > 0;
+    })
   );
 
-  return hasTag || hasPhoto;
+  return hasTag || hasProductMatch || hasPhoto;
 }
 
 // ── HMAC verification ─────────────────────────────────────────────────────────
