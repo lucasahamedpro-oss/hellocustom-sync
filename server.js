@@ -53,33 +53,33 @@ app.post("/webhook/orders/create", async (req, res) => {
 });
 
 // ── Filtre commandes portrait animal ─────────────────────────────────────────
+// Critères (OR) : tag OU titre produit OU SKU OU propriété Globo photo
+// Aucune dépendance aux balises Shopify → fonctionne même sans tag
 function isPortraitAnimalOrder(order) {
   const tags = (order.tags || "").toLowerCase();
 
-  // 1. Vérifie les tags Shopify
-  const hasTag = tags.includes("portrait animal pull") ||
-                 tags.includes("portrait-animal");
+  // 1. Tags Shopify (si présents)
+  if (tags.includes("portrait animal") || tags.includes("portrait-animal")) return true;
 
-  // 2. Vérifie le titre ou SKU du produit (plus fiable que les tags)
-  const hasProductMatch = (order.line_items || []).some(item => {
+  for (const item of order.line_items || []) {
     const title = (item.title || "").toLowerCase();
     const sku   = (item.sku   || "").toLowerCase();
-    return title.includes("brodé animal") ||
-           title.includes("brode animal") ||
-           sku.includes("hc-sweat-cat")   ||
-           sku.includes("hc-sweat-ani");
-  });
 
-  // 3. Fallback : présence d'une photo uploadée via Globo
-  const hasPhoto = (order.line_items || []).some(item =>
-    (item.properties || []).some(p => {
+    // 2. Titre du produit
+    if (title.includes("animal") && (title.includes("brodé") || title.includes("brode") || title.includes("portrait"))) return true;
+
+    // 3. SKU HelloCustom (HC-SWEAT-CAT-* ou HC-SWEAT-ANI-*)
+    if (sku.startsWith("hc-sweat-cat") || sku.startsWith("hc-sweat-ani")) return true;
+
+    // 4. Présence d'une photo uploadée via Globo (nom commence par "upload photo")
+    for (const p of item.properties || []) {
       const name = (p.name || "").trim().toLowerCase();
       const val  = (p.value || "").trim();
-      return name.startsWith("upload photo") && val.length > 0;
-    })
-  );
+      if (name.startsWith("upload photo") && val.length > 10) return true;
+    }
+  }
 
-  return hasTag || hasProductMatch || hasPhoto;
+  return false;
 }
 
 // ── HMAC verification ─────────────────────────────────────────────────────────
